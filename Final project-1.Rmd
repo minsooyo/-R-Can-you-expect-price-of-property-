@@ -1,0 +1,656 @@
+---
+title: "How do you predict your property price?"
+author: "Real estate speicalist Minsoo Seok"
+date: "09/05/2021"
+abstract : "It will be very important for real estate angency to understand the pattern of sale price and predict the sale price based on pattern becasue it impacts on their marketing strategies. This report follows data science methodology in order to present evidence for the sale price prediction. This report manily try to find elements which affects properties and the elements will be used for linear regression. This report found the key 10 elements such as location, overall quaility of property. It helps predict properies sale price and It will be main information for real estate agency to organize their marketing strategies."
+output: 
+  word_document: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+<style type="text/css">
+
+h1.title {
+  font-size: 38px;
+  color: DarkRed;
+  text-align: center;
+}
+h4.author { /* Header 4 - and the author and data headers use this too  */
+    font-size: 18px;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkRed;
+  text-align: center;
+}
+h4.date { /* Header 4 - and the author and data headers use this too  */
+  font-size: 18px;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkBlue;
+  text-align: center;
+}
+</style>
+
+### Set Working directory
+```{r warning=FALSE,message=FALSE}
+setwd("~/Desktop/EDA/FINAL PROJECT")
+```
+
+
+### loading Packages used for project
+```{r warning=FALSE, message=FALSE,results="hide"}
+  
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(GGally)
+library(ggrepel)
+library(egg)
+library(reshape2)
+library(corrplot)
+library(lubridate)
+library(modelr)
+library(car)
+```
+
+
+### Dataset used for project
+
+```{r  warning=FALSE,message=FALSE, results="hide"}
+train <- read.csv("train.csv")
+test  <- read.csv("test.csv")
+
+dim(train)
+dim(test)
+head(train)
+head(test)
+colnames(train)
+colnames(train)
+
+```
+
+
+
+
+# 1.PROBLEM IDENTIFICATION
+You are a real estate analyst. it is always important to predict saleprice of properties by investigating elements which affect saleprice.
+The dataset provided include information of saleprice and elements impact to the saleprice.
+
+This report uses professional structure which follows the data science methodology including preprocessing, EDA, linearmodel, etc,..
+
+You are setting the 7 important questions regarding the dataset and analyise the questions to predict the saleprice of properties. 
+You will mainly use data analysis techniques and linear regression model.
+
+There are two datasets privded "train" and "test".
+The train dataset consist of 81 variables with 1460 observation.
+and test dataset consist of 81 variables with 1459 observation.
+You will mainly use train dataset and test dataset will be used only for "Evaluation" the model.
+The root mean squared Error(RMSE) is used for computation of the model error.
+
+
+
+1) What is the distribution of sale price over the years? if there are outliers, what is the outcome without outliers? will you use median price or mean price?
+
+-This will be main question for every real estate agency. It is quite important to analyze what is the distribution of sale price so that the price pattern will be found and it helps to understand any information regarding price.
+
+2) Is there any seasonal, year and month impact on amount of properties on salep rice and median price?
+
+-This question helps to identify if there is pattern depends on period. This information is significant for real estate agency to make better marketing strategy.
+
+3) Which classification of the sale are most and is there any impact on saleprice?
+
+-This question is to understand if there is impact of classification. If any pattern exist for this column, it will be helpful to know predict the sale price. For instance, agriculture area is normally cheaper than commercial area.
+
+4) Which Neighborhoods records the high sale price and low sale price compared to each others? 
+where is the top 5 median price Neighborhoods and how the plot looks like in time series?
+
+-This question is one of the most important questions. Location is always key element of property. There must be pattern and it will help to predict future sale price.
+
+5) Does overallquall has a great impact on sale price and is there any specific pattern?
+
+-It is obvious if the quality of property is higher, the sale price will be higher too. As well as, it can be found that how much the quality affects to sale price. (such as 1 quality higher, the price increase ---)
+
+6) Which SaleType is most common and does SaleType has an impact on median salep rice?
+
+-It can be found what is the trend way to purchase properties through this question. It is important to know the trend so that it can be understood that common way to secure funds. 
+
+7) Does Year built has an impact on sale price?
+
+-It is well known that newly built house is more expensive because there are more chances to be modern style. It will be found that if there might be a pattern or not through this question. 
+
+8) Which elements have an great impact on sale price?
+
+-Above questions are not enough to check all the elements which affects sale price. So, this question will be very important to analyze linear model regression regarding sale price 
+
+
+### explanation of variables
+MSSubClass: Identifies the type of dwelling involved in the sale.	
+
+MSZoning: Identifies the general zoning classification of the sale.
+
+LotFrontage: Linear feet of street connected to property
+
+LotArea: Lot size in square feet
+
+LotShape: General shape of property
+       
+Neighborhood: Physical locations within Ames city limits
+	
+OverallQual: Rates the overall material and finish of the house
+
+OverallCond: Rates the overall condition of the house
+		
+YearBuilt: Original construction date
+
+YearRemodAdd: Remodel date (same as construction date if no remodeling or additions)
+
+GrLivArea: Above grade (ground) living area square feet
+
+TotalBsmtSF: Total square feet of basement area
+
+Bedroom: Bedrooms above grade (does NOT include basement bedrooms)
+
+FireplaceQu: Fireplace quality
+
+GarageType: Garage location
+		
+GarageYrBlt: Year garage was built
+		
+GarageCars: Size of garage in car capacity
+
+GarageArea: Size of garage in square feet
+
+GarageQual: Garage quality
+
+GarageCond: Garage condition
+
+PoolArea: Pool area in square feet
+
+MoSold: Month Sold (MM)
+
+YrSold: Year Sold (YYYY)
+
+SaleType: Type of sale
+
+# 2.DATA PREPROCESSING
+It is very important to preprocess your data before you actually use it to get insight. clean data helps avoid getting any error or misunderstanding.
+
+## Dealing with missing values 
+
+
+
+```{r warning=FALSE,message=FALSE,results="hide"}
+sort(colSums(is.na(train)))
+```
+Check how many missing values(NA) are in each column
+Columns which have more than 30% NA values are PoolQC, MiscFeature, Alley, Fence and FireplaceQu.
+
+
+## Remove columns which have more than 30%
+```{r warning=FALSE,message=FALSE,results="hide"}
+train<-train[, colMeans(is.na(train)) <= 0.3]
+```
+
+The code detects columns which have more than 30% NA values and remove the columns
+removing columns is because it does not have enough data on these column to compare to other values. 
+
+```{r warning=FALSE,message=FALSE,results="hide"}
+sort(colSums(is.na(train)))
+```
+Columns which have NAs: 3(Numerical) , 11(Categorical)
+
+Numerical:LotFrontage,GarageYrBlt,MasVnrArea
+
+Categorical:GarageCond,GarageQual,GarageFinish,GarageType,BsmtFinType2,BsmtExposure,BsmtFinType1,BsmtCond,BsmtQual,MasVnrType,Electrical
+
+It should be divided first because it should be dealt with in a differnt way.
+
+## Check the ditribution of numerical dataset which have NA values
+```{r  warning=FALSE,message=FALSE, fig.show='hide'}
+ggplot(train,aes(x=LotFrontage))+
+geom_histogram()
+
+ggplot(train,aes(x=GarageYrBlt))+
+geom_histogram()
+
+ggplot(train,aes(x=MasVnrArea))+
+geom_histogram()
+```
+Those Three numerical values have skewness obviously, so median value will be used for NA values.
+
+
+## Imputing NA values in numerical column to Median values
+```{r warning=FALSE,message=FALSE}
+train <- train %>%
+  mutate_if(is.numeric, ~replace_na(.,median(., na.rm=TRUE)))
+```
+Code detects numerical columns and change NA values to median.
+
+## Imputing Na values in categorical column to Mode values
+```{r warning=FALSE,message=FALSE,results="hide"}
+
+Mode <- function(x) {
+  ux <- na.omit(unique(x) )
+ tab <- tabulate(match(x, ux)); ux[tab == max(tab) ]
+}
+
+sapply(train,Mode)
+
+train$GarageCond[is.na(train$GarageCond)] <- "TA"
+train$GarageQual[is.na(train$GarageQual)] <- "TA"
+train$GarageFinish[is.na(train$GarageFinish)] <- "Unf"
+train$GarageType[is.na(train$GarageType)] <- "Attchd"
+train$BsmtFinType2[is.na(train$BsmtFinType2)] <- "Unf"
+train$BsmtExposure[is.na(train$BsmtExposure)] <- "No"
+train$BsmtFinType1[is.na(train$BsmtFinType1)] <- "Unf"
+train$BsmtCond[is.na(train$BsmtCond)] <- "TA"
+train$BsmtQual[is.na(train$BsmtQual)] <- "TA"
+train$MasVnrType[is.na(train$MasVnrType)] <- "None"
+train$Electrical[is.na(train$Electrical)] <- "SBrkr"
+
+```
+NA values are changed to "Mode" in every categorical column. Program R does not provide mode fuction so Mode is defined first in the code and detect what is the code for each column with sapply, and it is applied into each categorical columns which have Na values.
+
+
+## Check if there is still Na values in the dataset
+```{r warning=FALSE,message=FALSE}
+sum(is.na(train))
+```
+There is no NA values anymore in any column. So the dataset is ready to EDA part!
+
+## Corelation heatmap(numerical column)
+We can see overview simply how much numerical columns related to saleprice throughout corelation heatmap. There are a lot of numerical columns so top 10 variables is picked to plot corelation heatmap.
+```{r fig.align="center", message=FALSE, warning=FALSE}
+Numeric_column<- train %>%select(where(is.numeric))
+cor_Numeric<-round(cor(Numeric_column),5) 
+
+Saleprice_sort <-as.matrix(sort(cor_Numeric[,'SalePrice'], decreasing = TRUE))
+
+top10 <-names(which(apply(Saleprice_sort, 1, function(x) abs(x)>0.507)))
+
+numeric_data <- cor_Numeric[top10, top10]
+
+corrplot.mixed(numeric_data)
+```
+
+
+The heatmap cleary shows
+numerical columns which have greater impact on saleprice.
+Top 10 numerical values which record high corelation are
+OverallQual,GrLivArea,GarageCars,GarageArea,TotalBsmtSF,X1stFlrSF,FullBath,TotRmsAbvGrd,YearBuilt,YearRemodAdd.
+Therefore, these numerical columns are key  for further analysis.
+
+
+# 3.EXPLORATORY DATA ANALYSIS AND VISUALISATION
+
+
+## Price range distribution
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.align="center"}
+summary(train$SalePrice)
+
+ggplot(train,aes(x=SalePrice,fill=..count..))+
+geom_histogram(bins=30)+
+ggtitle("SalePrice over years")+
+xlab("Price")+
+ylab("Observation")+
+scale_x_continuous(labels = scales::comma)+
+theme(plot.title = element_text(size=14, face="bold",hjust = 0.5),
+        axis.title.x= element_text(size =12,hjust = 0.5),
+        axis.title.y= element_text(size=12,hjust = 0.5),
+        legend.title = element_text(size=15, face="bold", vjust=0.5,hjust = 0.2))+
+  scale_fill_gradient(name="Amount",low = "navy",high = "lightpink")
+
+```
+
+ median price distribution of overall price is skewed to right. 
+The mean price is higher than median price.It can be assumed that some extreme expensive houses (such as 755,000)are outliers and they affect the mean value a lot. Statistical parameters are highly sensitive to outliers.
+Therefore, it would be great to see the outcome once again without outliers to extract insight of the dataset.
+
+
+
+## Price range distribution without outliers 
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.align="center"}
+boxplot.stats(train$SalePrice)$out
+
+out <- boxplot.stats(train$SalePrice)$out
+out_ind <- which(train$SalePrice %in% c(out))
+out_ind
+train_clean<-train[-out_ind,]
+summary(train_clean$SalePrice)
+
+ggplot(train_clean,aes(x=SalePrice,fill=..count..))+
+geom_histogram(bins=30)+
+ggtitle("SalePrice over years")+
+xlab("Price")+
+ylab("Observation")+
+scale_x_continuous(labels = scales::comma)+
+theme(plot.title = element_text(size=14, face="bold",hjust = 0.5),
+        axis.title.x= element_text(size =12,hjust = 0.5),
+        axis.title.y= element_text(size=12,hjust = 0.5),
+        legend.title = element_text(size=15, face="bold", vjust=0.5,hjust = 0.2))+
+  scale_fill_gradient(name="Amount",low = "navy",high = "lightpink")
+```
+
+Some of extrem expensive houses are outliers. The max price is 340000 without outliers(it was 755000). We can check the median and mean decrease around $4500, $10000 each.
+It still shows skewness, therefore, it will be better to use median price rather than mean price.
+
+## Year / Month house sold distribution
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.align="center"}
+train_Yearsold<-train_clean %>% 
+  group_by(YrSold,MoSold) %>% 
+  summarise(Count = n(), median_price=median(SalePrice))
+
+ggplot(train_Yearsold,aes(x=YrSold,y=Count,fill=MoSold))+
+geom_bar(stat="identity")+
+ggtitle("Sale count over the Years")+
+xlab("Year")+
+ylab("Count")+
+theme(plot.title = element_text(size=14, face="bold",hjust = 0.5),
+        axis.title.x= element_text(size =12,hjust = 0.5),
+        axis.title.y= element_text(size=12,hjust = 0.5),
+        legend.title = element_text(size=15, face="bold", vjust=0.5,hjust = 0.2))+ scale_fill_gradient(name="Month",low = "navy",high = "lightpink")
+
+ggplot(train_Yearsold,aes(x=YrSold,y=median_price,fill=median_price))+
+  geom_bar(stat="identity")+
+  ggtitle("Median price of properties over the Years")+
+xlab("Year")+
+ylab("Median price")+
+theme(plot.title = element_text(size=14, face="bold",hjust = 0.5),
+        axis.title.x= element_text(size =12,hjust = 0.5),
+        axis.title.y= element_text(size=12,hjust = 0.5),
+        legend.title = element_text(size=15, face="bold", vjust=0.5,hjust = 0.2))+
+   scale_fill_gradient(name="Median Price",low = "navy",high = "lightpink")
+
+```
+The highest housesold recorded in 2009. More than 350 houses sold this year. 2010 record the lowest housesold among these year. There is no specific pattern of housesold based on year.
+May,June,July records high housesold compared to other months. it is nearly symetric distribution. From feburary, it increase gradually until June and it drops to december.
+interestingly, The median price over the given years(2006 to 2010) is getting smaller.
+
+## Seasonal impacts on median price and number of properties sold
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.align="center"}
+train_clean<-train_clean %>% mutate(season = ifelse(MoSold %in% 3:5, "spring", ifelse(MoSold %in% 6:8, "summer",
+                    ifelse(MoSold %in% 9:11, "fall",
+                                             "winter"))))
+season<-train_clean %>% group_by(season) %>% summarise(count=n(),median_price=median(SalePrice))
+
+ggplot(season,aes(x=season,y=count,fill=median_price))+
+geom_bar(stat="identity")+
+ggtitle("Seasonal impact on Saleprice and Count")+
+xlab("Season")+
+ylab("Count")+
+  scale_y_continuous(labels = scales::comma)+
+theme(plot.title = element_text(size=14, face="bold",hjust = 0.5),
+        axis.title.x= element_text(size =12,hjust = 0.5),
+        axis.title.y= element_text(size=12,hjust = 0.5),
+        legend.title = element_text(size=15, face="bold", vjust=0.5,hjust = 0.2))+
+ scale_fill_gradient(name="Median Price",low = "navy",high = "lightpink")
+```
+There are seasonal impact on amount of sale. 
+The amount of sale records higher spring and summer(3~8) compared to other period over the year. Especially the amount of sale is the highest in summer which record right under 600.
+The amount of sale is the least in winter which record less than 200 over the given year. 
+It can be assume that the  weather based on season affects the amount of sale.
+However, It can not be found specific patter in saleprice depends on season. 
+
+
+
+## MSZoning impacts on median price and number of properties sold
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.align="center"}
+location<-train_clean %>% group_by(MSZoning) %>% summarise(count=n(), median_price=median(SalePrice))
+
+ggplot(location,aes(x=MSZoning, y=median_price,fill=count))+
+geom_bar(stat="identity")+
+ggtitle("Impact of MSZoning")+
+xlab("MSZoning")+
+ylab("Medianprice")+
+theme(plot.title = element_text(size=14, face="bold",hjust = 0.5),
+        axis.title.x= element_text(size =12,hjust = 0.5),
+        axis.title.y= element_text(size=12,hjust = 0.5),
+        legend.title = element_text(size=15, face="bold", vjust=0.5,hjust = 0.2))+
+ scale_fill_gradient(name="Number of house",low = "navy",high = "lightpink")
+```
+
+Most of cases are RL(Residential low Density) which records more than 1000 out of 1400 observation. This RL zone records 170,000 median price. Floating Village Residential records the highest median price and commercial area record the least median price among the categories 
+
+
+
+## Neighborhood and sale price distrubution 
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.align="center"}
+ggplot(train_clean,aes(x=reorder(Neighborhood,-SalePrice),y=SalePrice))+
+geom_boxplot()+
+ggtitle("Impact of Neighborhood on SalePrice")+
+xlab("Neighborhood")+
+ylab("Price Range")+
+scale_y_continuous(labels = scales::comma)+
+theme(plot.title = element_text(size=14, face="bold",hjust = 0.5),
+        axis.title.x= element_text(size =12,hjust = 0.5),
+        axis.title.y= element_text(size=12,hjust = 0.5),
+        legend.title = element_text(size=15, face="bold", vjust=0.5,hjust = 0.2),
+        axis.text.x= element_text(angle =45))
+
+```
+According to the box graph above, NridgHt records the highest price among neighborhood and NoRidge is the second highest. Only These two neighborhood record more than $250,000 as a median price. The Meaddow records the least median price around $100,000. Therefore, it can tell that the highest price of neighborhood records more than 2.5 times to the least price of neighborhood.
+
+## TOP5 Median price neighborhood and median price based on time series plot
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.align="center"}
+top5<- train_clean %>% group_by(Neighborhood) %>% summarise(median_price=median(SalePrice)) %>% arrange(desc(median_price)) %>% slice(1:5)
+
+Neighborhood<- train_clean %>% filter(Neighborhood =='NoRidge'|Neighborhood =='NridgHt' |Neighborhood =='StoneBr'|Neighborhood =='Timber'|Neighborhood =='Somerst') %>% group_by(Neighborhood,YrSold) %>% summarise(median_price=median(SalePrice))
+
+ggplot(Neighborhood,aes(x=YrSold,y=median_price,col=Neighborhood))+
+geom_line( linetype = 2)
+
+
+```
+The top 5 neighborhood which record high median price are NoRidge, NridgHt, StoneBr, Timber and Somerst. It is investigated that how their median price is changed based on year. There is no specific pattern for 5 neighborhood of their median price. but ,mainly, they record median price between $210,000 to $290,000
+
+
+## OverallQual and sale price distrubution 
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.align="center"}
+ggplot(train_clean,aes(x=OverallQual,y=SalePrice))+
+geom_boxplot()+
+facet_wrap(~OverallQual,scales="free")+
+scale_y_continuous(labels = scales::comma)+
+theme(plot.title = element_text(size=14, face="bold",hjust = 0.5),
+        axis.title.x= element_text(size =12,hjust = 0.5),
+        axis.title.y= element_text(size=12,hjust = 0.5),
+        legend.title = element_text(size=15, face="bold", vjust=0.5,hjust = 0.2),
+        axis.text.x= element_blank())
+````
+
+There is vary clear relationship between overallqual and saleprice.The pattern is 1 overallqual is higher , $150,000 is higher on average. There are several outliers on each Quality. Quality 2 and 10 have extreme skewness to left.
+
+## SaleType and sale price distrubution 
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.align="center"}
+SaleType<-train %>% group_by(SaleType) %>% 
+summarise(count=n(),median_price=median(SalePrice))
+
+ggplot(SaleType,aes(x=SaleType,y=median_price,fill=count))+
+geom_bar(stat="identity")+
+ggtitle("Saletype and median price")+
+xlab("Saletype")+
+ylab("Medianprice")+
+  scale_y_continuous(labels = scales::comma)+
+theme(plot.title = element_text(size=14, face="bold",hjust = 0.5),
+        axis.title.x= element_text(size =12,hjust = 0.5),
+        axis.title.y= element_text(size=12,hjust = 0.5),
+        legend.title = element_text(size=15, face="bold", vjust=0.5,hjust = 0.2))+
+ scale_fill_gradient(name="Count",low = "navy",high = "lightpink")
+```
+Most of saletype is warranty deed-conventional. it records 1267 out of 1460. It is a trend way to buy properties. "Home just constructed and sold" was second common way to sell property which record 122 out of 1460. The median price of Contract 15% Down payment regular terms was the highest which record 269600$. It can be assumed that buyer pay cash for it.
+
+## YearBuilt and sale price distrubution 
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.align="center"}
+YearBuilt<-train_clean %>% group_by(YearBuilt) %>% 
+summarise(median_price=median(SalePrice))
+
+ggplot(YearBuilt,aes(x=YearBuilt,y=median_price,fill=median_price))+
+geom_bar(stat="identity")+
+ggtitle("YearBuilt and median price")+
+xlab("YearBuilt")+
+ylab("Medianprice")+
+  scale_y_continuous(labels = scales::comma)+
+theme(plot.title = element_text(size=14, face="bold",hjust = 0.5),
+        axis.title.x= element_text(size =12,hjust = 0.5),
+        axis.title.y= element_text(size=12,hjust = 0.5),
+        legend.title = element_text(size=15, face="bold", vjust=0.5,hjust = 0.2))+
+ scale_fill_gradient(name="Median Price",low = "navy",high = "lightpink")
+```
+In terms of amount of sale, it is shown that properties built recently have bigger sale number of properties compared to older properties. interestingly, property records the higest saleprice is builtbefore 1900. It can be assumed that this property has a historic value. overall, the median price is higher when it is built recently,however it does not happen always. 
+
+
+```{r fig.show='hide'}
+plot(train_clean$MSSubClass, train_clean$SalePrice) 
+plot(train_clean$LotFrontage, train_clean$SalePrice)
+plot(train_clean$LotArea, train_clean$SalePrice)
+plot(train_clean$YearRemodAdd, train_clean$SalePrice)
+plot(train_clean$LotArea,train_clean$SalePrice )
+plot(train_clean$OverallCond,train_clean$SalePrice)
+plot(train_clean$Bedroom,train_clean$SalePrice)
+```
+More candidates of variables are tested in order to find corelation. 
+It can be found that the pattern exists "YearRmodAdd" "overallcond" and "LotArea" variables. This variable will be used for linear model.
+
+
+
+# 4.FURTHER PREPROCESSING
+```{r warning=FALSE,message=FALSE, fig.align="center"}
+selected_train<-train_clean %>% select(c(SalePrice,YearBuilt,YearRemodAdd,
+LotArea,OverallCond,OverallQual,GrLivArea,GarageCars,
+GarageArea,TotalBsmtSF,X1stFlrSF,
+FullBath,MSZoning ,SaleType,Neighborhood))
+
+```
+
+Finally 14 columns are chosen for linear modelbased on correlation heat map and EDA activities. These columns shows certain pattern even though it is small pattern toward sale price.14 columns consist of numeric and character.
+
+
+
+
+# 5.MODELLING
+
+```{r message=FALSE, warning=FALSE, fig.align="center"}
+linear_model <- lm(log(SalePrice)~YearBuilt+YearRemodAdd+LotArea+OverallCond+OverallQual + GrLivArea + 
+                     GarageCars + GarageArea + TotalBsmtSF + 
+                    X1stFlrSF +FullBath +MSZoning + SaleType + 
+                   Neighborhood, selected_train)
+                   
+rmse(linear_model, test)   
+
+```
+
+The first linear model records 0.1479232. More formulation will be tested to minimize RMSE.
+
+```{r message=FALSE, warning=FALSE, fig.align="center",result="hide"}
+summary(linear_model)
+
+```
+
+Summary function is used in order to check which columns show less correlation to liner model. 3 columns (SaleType,X1stFlrSF,FullBathis) shows less correlation record.
+When it comes to Neighborhood,Each neighborhood has a different Estimate value from summary.
+
+## Remove outliers
+```{r message=FALSE, warning=FALSE, fig.align="center"}
+
+outlierTest(linear_model)
+selected_train <-selected_train[-c(463,524,633,969,1299,1325), ] 
+```
+outliers are detected by outlierTest. 6 columns are chosen from the test and these columns is removed to minimize RMSE.
+
+## Final model test
+```{r message=FALSE, warning=FALSE, fig.align="center"}
+final_model <- lm(log(SalePrice)~YearBuilt+YearRemodAdd+LotArea+OverallCond+OverallQual + log(GrLivArea) + 
++                      GarageCars  + TotalBsmtSF + MSZoning + 
++                    Neighborhood, selected_train)
+
+rmse(final_model, test)   
+```
+After the first linear model, SaleType,X1stFlrSF,FullBathis, GarageArea are removed and log on GrLivArea variable to fix skewness to improve the model and minimize RMSE.
+
+RMSE
+First model- 0.148
+Final model- 0.144
+
+The RMSE decreased but not significantly from about 0.148 in the first model 
+to 0.144 in the final model.
+The two models have quite small root mean square error (which is great)on siginificant level at 0.05. 
+The final model has bit less root mean square error so it will be used for further process.
+
+
+
+# 6.EVALUATION
+```{r echo=FALSE,message=FALSE, warning=FALSE, fig.align="center"}
+lmpred <- predict(final_model, newdata =  test)
+lmdata<- test %>% mutate(y = log(SalePrice)) %>% mutate(ybar = lmpred ) %>% 
+  mutate(diff = abs(y - ybar))
+
+badlmdata<- lmdata %>% filter(diff > 0.2) %>% arrange(desc(diff))
+
+ggplot(lmdata, aes(x = y, y = ybar), col = diff)+
+  geom_point(aes(x = y, y = ybar, color = diff)) +
+  geom_point(data = badlmdata, colour = "red")  +
+  scale_color_gradient(name = "|y - ybar|",limits = c(0,0.3)) +
+  geom_abline(slope = 1, intercept = 0) + xlab("y") + ylab("ybar") +
+  ggtitle("Linear model residuals")+
+  xlab("y") + 
+  ylab("ybar") +
+    theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, hjust = 0.5),
+        axis.title.y = element_text(size = 12, hjust = 0.5))
+ 
+sqrt(mean((log(test$SalePrice)-lmpred)^2,na.rm=TRUE))
+
+```
+
+
+# 7.RECOMMENDATIONS AND FINAL CONCLUSIONS
+In the conclusion, 
+The final model records 0.1443751 of root mean square error. It is very great figure for future prediction.
+
+10 columns is chosen For the final model which are
+YearBuilt,YearRemodAdd,LotArea,OverallCond,OverallQual,log(GrLivArea),
+GarageCars,TotalBsmtSF,MSZoning,Neighborhood.
+
+The initial model has 14 columns and 4 columns are dropped based on summary(linear model).
+The outcome is slighly improved which mean RMSE is decreased.
+
+These columns are based on EDA, Futher pre-procssing and modeling parts. These columns show certain pattern to sale price and it is found that it is effective to minimize RMSE. GrLivArea has a skewness so log is applied.
+
+YearRemodAdd, OverallQual, OverallCond,GrLivArea, GarageCars, MSZoning, TotalBsmtSF and Neighborhood are important elements which have an great impacts on sale price so it can tell these columns are key to predict future sale price. 
+
+Probably There might be bit more columns which help predict sale price but I do believe this reports check all the major columns which have great impact on sale price. 
+Probably, Analysis could be improved  if every outliers is removed in the first stage for every numerical columns.
+
+Students were required to find elements which have correlation to sale price though Pre-processing, EDA, Further processing. However, I think we can use Anova() fucntion to find correlation in out real life quicker. 
+
+
+Actually, It was my first time to organize whole report using R markdown as a report formation. It took a lot of time but it was very meaningful report.
+Thank you so much Shuan! you are the best teacher in University.
+
+
+
+
+
+
+
+
+# 8.REFERENCES
+Season in Ames
+https://www.weather-us.com/en/iowa-usa/ames-climate
+
+Example of project
+https://www.kaggle.com/c/house-prices-advanced-regression-techniques/notebooks?sortBy=hotness&group=everyone&pageSize=20&competitionId=5407&language=R
+
+Code advice (several pages)
+https://stackoverflow.com
+
+Code adivce2 (several pages)
+https://www.r-project.org/
+
+Overall Structure (several pages)
+http://www.kaggle.com
+
+Understanding of RMSE
+https://www.statisticshowto.com/probability-and-statistics/regression-analysis/rmse-root-mean-square-error/#:~:text=Root%20Mean%20Square%20Error%20(RMSE)%20is%20the%20standard%20deviation%20of,the%20line%20of%20best%20fit.
+
+
+
